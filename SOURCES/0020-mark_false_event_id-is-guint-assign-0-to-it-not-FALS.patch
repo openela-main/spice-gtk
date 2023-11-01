@@ -1,0 +1,26 @@
+From df47365c32711bae5dfa163f8eba7b0f741326d6 Mon Sep 17 00:00:00 2001
+From: Uri Lublin <uril@redhat.com>
+Date: Thu, 19 Nov 2020 19:30:54 +0200
+Subject: [PATCH 20/22] mark_false_event_id is guint, assign 0 to it not FALSE
+
+Signed-off-by: Uri Lublin <uril@redhat.com>
+---
+ src/channel-display.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/channel-display.c b/src/channel-display.c
+index 023baa1..f52ef12 100644
+--- a/src/channel-display.c
++++ b/src/channel-display.c
+@@ -1971,7 +1971,7 @@ static void display_handle_surface_create(SpiceChannel *channel, SpiceMsgIn *in)
+         create_canvas(channel, surface);
+         if (c->mark_false_event_id != 0) {
+             g_source_remove(c->mark_false_event_id);
+-            c->mark_false_event_id = FALSE;
++            c->mark_false_event_id = 0;
+         }
+     } else {
+         surface->primary = false;
+-- 
+2.28.0
+

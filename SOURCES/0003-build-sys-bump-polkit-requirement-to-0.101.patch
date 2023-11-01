@@ -1,0 +1,94 @@
+From f036039b2ab3945940159342fb3880064f2611c9 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marc-Andr=C3=A9=20Lureau?= <marcandre.lureau@redhat.com>
+Date: Thu, 9 Apr 2020 01:05:00 +0200
+Subject: [PATCH 3/9] build-sys: bump polkit requirement to 0.101
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+It was released on 2011-03-03, and is available in old debian stable
+and all distros we care about.
+
+Signed-off-by: Marc-André Lureau <marcandre.lureau@redhat.com>
+Acked-by: Frediano Ziglio <fziglio@redhat.com>
+(cherry picked from commit 94a3375beff5df8c8add33cf2f1b74350185dce2)
+---
+ meson.build                            |  7 +-----
+ src/spice-client-glib-usb-acl-helper.c | 34 --------------------------
+ 2 files changed, 1 insertion(+), 40 deletions(-)
+
+diff --git a/meson.build b/meson.build
+index 8098989..c442a0d 100644
+--- a/meson.build
++++ b/meson.build
+@@ -204,14 +204,9 @@ endif
+ 
+ # polkit
+ spice_gtk_has_polkit = false
+-d = dependency('polkit-gobject-1', version : '>= 0.96', required : get_option('polkit'))
++d = dependency('polkit-gobject-1', version : '>= 0.101', required : get_option('polkit'))
+ if d.found()
+   spice_gtk_policy_dir = d.get_pkgconfig_variable('policydir')
+-  foreach func : ['polkit_authority_get_sync', 'polkit_authorization_result_get_dismissed']
+-    if compiler.has_function(func, dependencies : d)
+-      spice_gtk_config_data.set('HAVE_@0@'.format(func.to_upper()), '1')
+-    endif
+-  endforeach
+ 
+   # TODO:  With 'auto', we should just disable polkit support if this is missing.
+   if not compiler.has_function('acl_get_file')
+diff --git a/src/spice-client-glib-usb-acl-helper.c b/src/spice-client-glib-usb-acl-helper.c
+index f75e0fc..de9e605 100644
+--- a/src/spice-client-glib-usb-acl-helper.c
++++ b/src/spice-client-glib-usb-acl-helper.c
+@@ -156,25 +156,6 @@ static void cleanup(void)
+         g_main_loop_quit(loop);
+ }
+ 
+-/* Not available in polkit < 0.101 */
+-#ifndef HAVE_POLKIT_AUTHORIZATION_RESULT_GET_DISMISSED
+-static gboolean
+-polkit_authorization_result_get_dismissed(PolkitAuthorizationResult *result)
+-{
+-    gboolean ret;
+-    PolkitDetails *details;
+-
+-    g_return_val_if_fail(POLKIT_IS_AUTHORIZATION_RESULT(result), FALSE);
+-
+-    ret = FALSE;
+-    details = polkit_authorization_result_get_details(result);
+-    if (details != NULL && polkit_details_lookup(details, "polkit.dismissed"))
+-        ret = TRUE;
+-
+-    return ret;
+-}
+-#endif
+-
+ static void check_authorization_cb(PolkitAuthority *authority,
+                                    GAsyncResult *res, gpointer data)
+ {
+@@ -291,21 +272,6 @@ static void stdin_read_complete(GObject *src, GAsyncResult *res, gpointer data)
+     g_free(s);
+ }
+ 
+-/* Fix for polkit 0.97 and later */
+-#ifndef HAVE_POLKIT_AUTHORITY_GET_SYNC
+-static PolkitAuthority *
+-polkit_authority_get_sync (GCancellable *cancellable, GError **error)
+-{
+-    PolkitAuthority *authority;
+-
+-    authority = polkit_authority_get ();
+-    if (!authority)
+-        g_set_error (error, 0, 0, "failed to get the PolicyKit authority");
+-
+-    return authority;
+-}
+-#endif
+-
+ #ifndef HAVE_CLEARENV
+ extern char **environ;
+ 
+-- 
+2.26.2
+

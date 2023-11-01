@@ -1,0 +1,26 @@
+From 8d60d4fc3fe0bd620f216091b24bbb8b72bb055a Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Marc-Andr=C3=A9=20Lureau?= <marcandre.lureau@redhat.com>
+Date: Mon, 17 Aug 2020 14:36:05 +0400
+Subject: [PATCH] main: add a few missing vdagent capability descriptions
+
+Acked-by: Frediano Ziglio <fziglio@redhat.com>
+---
+ src/channel-main.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/channel-main.c b/src/channel-main.c
+index 3dd94a2..671716a 100644
+--- a/src/channel-main.c
++++ b/src/channel-main.c
+@@ -222,6 +222,8 @@ static const char *agent_caps[] = {
+     [ VD_AGENT_CAP_AUDIO_VOLUME_SYNC   ] = "volume-sync",
+     [ VD_AGENT_CAP_MONITORS_CONFIG_POSITION ] = "monitors config position",
+     [ VD_AGENT_CAP_FILE_XFER_DISABLED ] = "file transfer disabled",
++    [ VD_AGENT_CAP_FILE_XFER_DETAILED_ERRORS ] = "file transfer detailed errors",
++    [ VD_AGENT_CAP_GRAPHICS_DEVICE_INFO ] = "graphics device info",
+     [ VD_AGENT_CAP_CLIPBOARD_NO_RELEASE_ON_REGRAB ] = "no release on re-grab",
+     [ VD_AGENT_CAP_CLIPBOARD_GRAB_SERIAL ] = "clipboard grab serial",
+ };
+-- 
+2.28.0
+

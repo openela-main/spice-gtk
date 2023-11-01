@@ -1,0 +1,48 @@
+From 1068e4d0e39f3d8f3390102863a02eaed7ee81b1 Mon Sep 17 00:00:00 2001
+From: Uri Lublin <uril@redhat.com>
+Date: Mon, 23 Nov 2020 15:38:43 +0200
+Subject: [PATCH 22/22] spice-utils: allocate ctx after g_return_val_if_fail
+
+Fix the following issue:
+  Error: RESOURCE_LEAK
+  src/spice-util.c:235: alloc_fn: Storage is returned
+         from allocation function "whc_new".
+  src/spice-util.c:235: var_assign: Assigning: "ctx" =
+         storage returned from "whc_new(instance_obj, gobject)".
+  src/spice-util.c:237: leaked_storage: Variable "ctx"
+         going out of scope leaks the storage it points to.
+
+  235|       WeakHandlerCtx *ctx = whc_new (instance_obj, gobject);
+  236|
+  237|->     g_return_val_if_fail (G_TYPE_CHECK_INSTANCE (instance), 0);
+  238|       g_return_val_if_fail (detailed_signal != NULL, 0);
+  239|       g_return_val_if_fail (c_handler != NULL, 0);
+
+Signed-off-by: Uri Lublin <uril@redhat.com>
+---
+ src/spice-util.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/spice-util.c b/src/spice-util.c
+index 1e49982..d0c56ba 100644
+--- a/src/spice-util.c
++++ b/src/spice-util.c
+@@ -231,7 +231,6 @@ gulong spice_g_signal_connect_object (gpointer instance,
+                                       GConnectFlags connect_flags)
+ {
+     GObject *instance_obj = G_OBJECT (instance);
+-    WeakHandlerCtx *ctx = whc_new (instance_obj, gobject);
+ 
+     g_return_val_if_fail (G_TYPE_CHECK_INSTANCE (instance), 0);
+     g_return_val_if_fail (detailed_signal != NULL, 0);
+@@ -240,6 +239,7 @@ gulong spice_g_signal_connect_object (gpointer instance,
+     g_return_val_if_fail (
+                           (connect_flags & ~(G_CONNECT_AFTER|G_CONNECT_SWAPPED)) == 0, 0);
+ 
++    WeakHandlerCtx *ctx = whc_new (instance_obj, gobject);
+     if (connect_flags & G_CONNECT_SWAPPED)
+         ctx->closure = g_cclosure_new_object_swap (c_handler, gobject);
+     else
+-- 
+2.28.0
+

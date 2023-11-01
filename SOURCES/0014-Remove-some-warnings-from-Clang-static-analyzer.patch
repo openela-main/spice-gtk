@@ -1,0 +1,74 @@
+From 95f6f22c4fee847cdf84465107561b94a5c10782 Mon Sep 17 00:00:00 2001
+From: Frediano Ziglio <freddy77@gmail.com>
+Date: Thu, 27 Aug 2020 17:20:06 +0100
+Subject: [PATCH] Remove some warnings from Clang static analyzer
+
+qmp-port.c:
+warning: Although the value stored to 'node' is used in the enclosing
+expression, the value is never actually read from 'node'
+
+usb-backend.c:
+warning: Value stored to 'done' is never read
+warning: Use of memory after it is freed
+
+usb-device-cd.c:
+warning: Value stored to 'error' is never read
+
+Signed-off-by: Frediano Ziglio <freddy77@gmail.com>
+---
+ src/qmp-port.c      | 2 +-
+ src/usb-backend.c   | 3 +--
+ src/usb-device-cd.c | 2 +-
+ 3 files changed, 3 insertions(+), 4 deletions(-)
+
+diff --git a/src/qmp-port.c b/src/qmp-port.c
+index 25ab1d1..f0cbbc7 100644
+--- a/src/qmp-port.c
++++ b/src/qmp-port.c
+@@ -104,7 +104,7 @@ spice_qmp_dispatch_message(SpiceQmpPort *self)
+         return TRUE;
+     }
+ 
+-    if ((node = json_object_get_member(obj, "error"))) {
++    if (json_object_get_member(obj, "error") != NULL) {
+         gint id = json_object_get_int_member(obj, "id");
+         const gchar *desc = json_object_get_string_member(obj, "desc");
+ 
+diff --git a/src/usb-backend.c b/src/usb-backend.c
+index 5d3912b..a4a5f0a 100644
+--- a/src/usb-backend.c
++++ b/src/usb-backend.c
+@@ -867,7 +867,6 @@ usbredir_control_packet(void *priv, uint64_t id, struct usb_redir_control_packet
+ 
+     if (!done) {
+         device_ops(edev)->control_request(edev, data, data_len, &response, &out_buffer);
+-        done = TRUE;
+     }
+ 
+     if (response.status) {
+@@ -1367,8 +1366,8 @@ void spice_usb_backend_channel_delete(SpiceUsbBackendChannel *ch)
+         free(ch->rules);
+     }
+ 
++    SPICE_DEBUG("%s << %p", __FUNCTION__, ch);
+     g_free(ch);
+-    SPICE_DEBUG("%s << %p", __FUNCTION__, ch);
+ }
+ 
+ void
+diff --git a/src/usb-device-cd.c b/src/usb-device-cd.c
+index 1aa553a..b9fa317 100644
+--- a/src/usb-device-cd.c
++++ b/src/usb-device-cd.c
+@@ -150,7 +150,7 @@ static int cd_device_load(SpiceCdLU *unit, gboolean load)
+     if (load) {
+         error = ioctl(fd, CDROMCLOSETRAY, 0);
+     } else {
+-        error = ioctl(fd, CDROM_LOCKDOOR, 0);
++        ioctl(fd, CDROM_LOCKDOOR, 0);
+         error = ioctl(fd, CDROMEJECT, 0);
+     }
+     if (error) {
+-- 
+2.28.0
+

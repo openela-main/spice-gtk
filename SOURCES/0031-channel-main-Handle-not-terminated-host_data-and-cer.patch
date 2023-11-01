@@ -1,0 +1,38 @@
+From 9b98e01c8f5d0dc8faaf3af7b8fc95768e1ff0ad Mon Sep 17 00:00:00 2001
+From: Frediano Ziglio <freddy77@gmail.com>
+Date: Wed, 16 Sep 2020 15:50:33 +0100
+Subject: [PATCH 31/31] channel-main: Handle not terminated host_data and
+ cert_subject_data fields
+
+host_data and cert_subject_data fields from SPICE messages could be
+not NUL terminated so using g_strdup can lead to some read overflow.
+
+This bug was discovered by Uri Lublin.
+
+Signed-off-by: Frediano Ziglio <freddy77@gmail.com>
+Acked-by: Uri Lublin <uril@redhat.com>
+---
+ src/channel-main.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/src/channel-main.c b/src/channel-main.c
+index 2881d59..5fefded 100644
+--- a/src/channel-main.c
++++ b/src/channel-main.c
+@@ -2460,10 +2460,11 @@ static void main_migrate_connect(SpiceChannel *channel,
+     mig->src_channel = channel;
+     mig->info = *dst_info;
+     if (dst_info->host_data) {
+-        mig->info.host_data = (void *) g_strdup((char*) dst_info->host_data);
++        mig->info.host_data = (void *) g_strndup((char*) dst_info->host_data, dst_info->host_size);
+     }
+     if (dst_info->cert_subject_data) {
+-        mig->info.cert_subject_data = (void *) g_strdup((char*) dst_info->cert_subject_data);
++        mig->info.cert_subject_data = (void *) g_strndup((char*) dst_info->cert_subject_data,
++                                                         dst_info->cert_subject_size);
+     }
+     mig->from = coroutine_self();
+     mig->do_seamless = do_seamless;
+-- 
+2.28.0
+
