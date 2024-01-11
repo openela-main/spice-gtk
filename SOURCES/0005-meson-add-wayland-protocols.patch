@@ -1,0 +1,160 @@
+From 8d3731162c2b3aae518f8d8b2d7190c4deec9911 Mon Sep 17 00:00:00 2001
+From: Francesco Giudici <fgiudici@redhat.com>
+Date: Thu, 27 Feb 2020 11:55:15 +0100
+Subject: [PATCH 5/9] meson: add wayland protocols
+
+Generate wayland protocols: these will be used later for locking the
+mouse pointer and getting relative mouse movements when using the mouse
+in server mode in Wayland.
+The meson build steps have been freely taken and adapted from Weston
+source code:
+https://gitlab.freedesktop.org/wayland/weston/-/blob/master/protocol/meson.build
+
+Signed-off-by: Francesco Giudici <fgiudici@redhat.com>
+Acked-by: Frediano Ziglio <fziglio@redhat.com>
+(cherry picked from commit d70044ab49728524c68796dd371d2bf7d94d27e5)
+---
+ meson.build       | 20 +++++++++++++++
+ meson_options.txt |  4 +++
+ src/meson.build   | 62 +++++++++++++++++++++++++++++++++++++++++++++--
+ 3 files changed, 84 insertions(+), 2 deletions(-)
+
+diff --git a/meson.build b/meson.build
+index c442a0d..7426ea5 100644
+--- a/meson.build
++++ b/meson.build
+@@ -31,6 +31,7 @@ spice_gtk_config_data = configuration_data()
+ spice_gtk_include = [include_directories('.')]
+ spice_glib_deps = []
+ spice_gtk_deps = []
++spice_wayland_deps = []
+ spice_acl_deps = []
+ 
+ #
+@@ -152,6 +153,25 @@ if d.found()
+   spice_gtk_has_gtk = true
+ endif
+ 
++# wayland protocols
++spice_gtk_has_wayland_protocols = false
++# Check if gtk is enabled and supports the wayland backend
++if host_machine.system() != 'windows' and spice_gtk_has_gtk and compiler.has_header('gtk-3.0/gdk/gdkwayland.h')
++  d = dependency('wayland-protocols', version: '>= 1.17', required: get_option('wayland-protocols'))
++  if d.found()
++    spice_gtk_config_data.set('HAVE_WAYLAND_PROTOCOLS', '1')
++    dir_wp_base = d.get_pkgconfig_variable('pkgdatadir')
++    dep_scanner = dependency('wayland-scanner', native: true)
++    prog_scanner = find_program(dep_scanner.get_pkgconfig_variable('wayland_scanner'))
++
++    wayland_libs_version_required = '1.17.0'
++    spice_wayland_deps += dependency('wayland-server', version : '>= @0@'.format(wayland_libs_version_required))
++    spice_wayland_deps += dependency('wayland-cursor', version : '>= @0@'.format(wayland_libs_version_required))
++    spice_wayland_deps += dependency('wayland-client', version : '>= @0@'.format(wayland_libs_version_required))
++    spice_gtk_has_wayland_protocols = true
++  endif
++endif
++
+ # webdav
+ spice_gtk_has_phodav = false
+ d = dependency('libphodav-2.0', required: get_option('webdav'))
+diff --git a/meson_options.txt b/meson_options.txt
+index 9804217..60b87ca 100644
+--- a/meson_options.txt
++++ b/meson_options.txt
+@@ -2,6 +2,10 @@ option('gtk',
+     type : 'feature',
+     description: 'Enable gtk+')
+ 
++option('wayland-protocols',
++    type : 'feature',
++    description: 'Enable wayland protocols')
++
+ option('webdav',
+     type : 'feature',
+     description: 'Enable webdav support')
+diff --git a/src/meson.build b/src/meson.build
+index 654dab5..bdd2239 100644
+--- a/src/meson.build
++++ b/src/meson.build
+@@ -318,6 +318,64 @@ if spice_gtk_has_gtk
+                                               command : cmd)
+   endforeach
+ 
++  #
++  # Wayland protocols
++  #
++  if spice_gtk_has_wayland_protocols
++
++    generated_protocols = [
++      [ 'pointer-constraints', 'v1' ],
++      [ 'relative-pointer', 'v1' ],
++     #[ 'input-method', 'v1' ],
++     #[ 'input-timestamps', 'v1' ],
++     #[ 'fullscreen-shell', 'v1' ],
++     #[ 'linux-dmabuf', 'v1' ],
++     #[ 'linux-explicit-synchronization', 'v1' ],
++     #[ 'presentation-time', 'stable' ],
++     #[ 'tablet', 'v2' ],
++     #[ 'text-input', 'v1' ],
++     #[ 'viewporter', 'stable' ],
++     #[ 'xdg-output', 'v1' ],
++     #[ 'xdg-shell', 'v6' ],
++     #[ 'xdg-shell', 'stable' ],
++    ]
++
++    foreach proto: generated_protocols
++      proto_name = proto[0]
++      if proto[1] == 'internal'
++        base_file = proto_name
++        xml_path = '@0@.xml'.format(proto_name)
++      elif proto[1] == 'stable'
++        base_file = proto_name
++        xml_path = '@0@/stable/@1@/@1@.xml'.format(dir_wp_base, base_file)
++      else
++        base_file = '@0@-unstable-@1@'.format(proto_name, proto[1])
++        xml_path = '@0@/unstable/@1@/@2@.xml'.format(dir_wp_base, proto_name, base_file)
++      endif
++
++      foreach output_type: [ 'client-header', 'server-header', 'private-code' ]
++        if output_type == 'client-header'
++          output_file = '@0@-client-protocol.h'.format(base_file)
++        elif output_type == 'server-header'
++          output_file = '@0@-server-protocol.h'.format(base_file)
++        else
++          output_file = '@0@-protocol.c'.format(base_file)
++          if dep_scanner.version().version_compare('< 1.14.91')
++              output_type = 'code'
++          endif
++        endif
++
++        spice_client_gtk_sources += custom_target(
++          '@0@ @1@'.format(base_file, output_type),
++          command: [ prog_scanner, output_type, '@INPUT@', '@OUTPUT@' ],
++          input: xml_path,
++          output: output_file,
++        )
++        message('@0@ @1@: @2@ -> @3@'.format(prog_scanner, output_type, xml_path, output_file))
++      endforeach
++    endforeach
++  endif
++
+   #
+   # libspice-client-gtk.so
+   #
+@@ -343,11 +401,11 @@ if spice_gtk_has_gtk
+                                  install : true,
+                                  link_args : [spice_gtk_version_script],
+                                  link_depends : spice_client_gtk_syms,
+-                                 dependencies : [spice_client_glib_dep, spice_gtk_deps])
++                                 dependencies : [spice_client_glib_dep, spice_gtk_deps, spice_wayland_deps])
+ 
+   spice_client_gtk_dep = declare_dependency(sources : spice_widget_enums[1],
+                                             link_with : spice_client_gtk_lib,
+-                                            dependencies : [spice_client_glib_dep, spice_gtk_deps])
++                                            dependencies : [spice_client_glib_dep, spice_gtk_deps, spice_wayland_deps])
+ 
+   if spice_gtk_has_introspection
+     #
+-- 
+2.26.2
+

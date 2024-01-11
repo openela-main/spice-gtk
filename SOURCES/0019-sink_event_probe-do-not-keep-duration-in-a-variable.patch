@@ -1,0 +1,42 @@
+From bb4999f6e450aa1b1270ade7113966869fc4ed27 Mon Sep 17 00:00:00 2001
+From: Uri Lublin <uril@redhat.com>
+Date: Wed, 11 Nov 2020 20:34:09 +0200
+Subject: [PATCH 19/22] sink_event_probe: do not keep duration in a variable
+
+If not ENABLE_RECORDER, then duration is assigned a value
+but is never used - as the compiler optimizes it out.
+
+Fixes the following clang warning:
+  src/channel-display-gst.c:443:21: warning: Value stored to
+  'duration' during its initialization is never read
+
+Signed-off-by: Uri Lublin <uril@redhat.com>
+---
+ src/channel-display-gst.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/channel-display-gst.c b/src/channel-display-gst.c
+index c58a90f..36db3a3 100644
+--- a/src/channel-display-gst.c
++++ b/src/channel-display-gst.c
+@@ -439,7 +439,6 @@ sink_event_probe(GstPad *pad, GstPadProbeInfo *info, gpointer data)
+         if (l) {
+             SpiceGstFrame *gstframe = l->data;
+             const SpiceFrame *frame = gstframe->encoded_frame;
+-            int64_t duration = g_get_monotonic_time() - frame->creation_time;
+             /* Note that queue_len (the length of the queue prior to adding
+              * this frame) is crucial to correctly interpret the decoding time:
+              * - Less than MAX_DECODED_FRAMES means nothing blocked the
+@@ -450,7 +449,8 @@ sink_event_probe(GstPad *pad, GstPadProbeInfo *info, gpointer data)
+             record(frames_stats,
+                    "frame mm_time %u size %u creation time %" PRId64
+                    " decoded time %" PRId64 " queue %u before %u",
+-                   frame->mm_time, frame->size, frame->creation_time, duration,
++                   frame->mm_time, frame->size, frame->creation_time,
++                   g_get_monotonic_time() - frame->creation_time,
+                    decoder->decoding_queue->length, gstframe->queue_len);
+ 
+             if (!decoder->appsink) {
+-- 
+2.28.0
+

@@ -1,0 +1,37 @@
+From afc5872bff1eb327dd299bacdc4eec5e26d37a10 Mon Sep 17 00:00:00 2001
+From: Frediano Ziglio <freddy77@gmail.com>
+Date: Wed, 23 Sep 2020 17:05:01 +0100
+Subject: [PATCH] usb-backend: Fix spice-usbredir-redirect-on-connect option
+
+After commit 3e20f17b90598e740c4e274b81d99f28187da800 (cfr
+"usb-redir: extend USB backend to support emulated devices")
+this option stopped working, as devices are not redirected.
+Data for device to guest were not written during initialisation.
+
+With this fix both spice-usbredir-redirect-on-connect and
+spice-share-cd are working (even together).
+
+This fixes https://bugzilla.redhat.com/show_bug.cgi?id=1874740.
+
+Signed-off-by: Frediano Ziglio <freddy77@gmail.com>
+Acked-by: Uri Lublin <uril@redhat.com>
+---
+ src/usb-backend.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/src/usb-backend.c b/src/usb-backend.c
+index a4a5f0a..857488e 100644
+--- a/src/usb-backend.c
++++ b/src/usb-backend.c
+@@ -418,7 +418,7 @@ static void usbredir_write_flush_callback(void *user_data)
+         return;
+     }
+     if (is_channel_ready(ch->usbredir_channel)) {
+-        if (ch->state == USB_CHANNEL_STATE_HOST) {
++        if (ch->state != USB_CHANNEL_STATE_PARSER && ch->usbredirhost != NULL) {
+             SPICE_DEBUG("%s ch %p -> usbredirhost", __FUNCTION__, ch);
+             usbredirhost_write_guest_data(ch->usbredirhost);
+         } else {
+-- 
+2.28.0
+

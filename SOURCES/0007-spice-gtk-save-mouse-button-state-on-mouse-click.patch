@@ -1,0 +1,77 @@
+From 7e0f7bda8d5817c0cbfc56be4cf3727b98f223f4 Mon Sep 17 00:00:00 2001
+From: Francesco Giudici <fgiudici@redhat.com>
+Date: Mon, 20 Apr 2020 14:37:57 +0200
+Subject: [PATCH 7/9] spice-gtk: save mouse button state on mouse click
+
+This will be used later to couple it with relative mouse movement under
+Wayland: we just get the mouse movement from the Wayland protocols
+callback.
+
+Signed-off-by: Francesco Giudici <fgiudici@redhat.com>
+Acked-by: Frediano Ziglio <fziglio@redhat.com>
+(cherry picked from commit 0fe70950524c28d383f34876c66107117581c72f)
+---
+ src/spice-widget-priv.h |  1 +
+ src/spice-widget.c      | 22 +++++++++++++++++++++-
+ 2 files changed, 22 insertions(+), 1 deletion(-)
+
+diff --git a/src/spice-widget-priv.h b/src/spice-widget-priv.h
+index 436c802..0b282f5 100644
+--- a/src/spice-widget-priv.h
++++ b/src/spice-widget-priv.h
+@@ -96,6 +96,7 @@ struct _SpiceDisplayPrivate {
+     SpiceSmartcardChannel   *smartcard;
+ 
+     enum SpiceMouseMode     mouse_mode;
++    int                     mouse_button_mask;
+     int                     mouse_grab_active;
+     bool                    mouse_have_pointer;
+     GdkCursor               *mouse_cursor;
+diff --git a/src/spice-widget.c b/src/spice-widget.c
+index 8b91f52..7700f47 100644
+--- a/src/spice-widget.c
++++ b/src/spice-widget.c
+@@ -1954,7 +1954,21 @@ static int button_gdk_to_spice(guint gdk)
+     };
+ 
+     if (gdk < SPICE_N_ELEMENTS(map)) {
+-        return map [ gdk ];
++        return map[gdk];
++    }
++    return 0;
++}
++
++static int button_gdk_to_spice_mask(guint gdk)
++{
++    static const int map[] = {
++        [1] = SPICE_MOUSE_BUTTON_MASK_LEFT,
++        [2] = SPICE_MOUSE_BUTTON_MASK_MIDDLE,
++        [3] = SPICE_MOUSE_BUTTON_MASK_RIGHT,
++    };
++
++    if (gdk < SPICE_N_ELEMENTS(map)) {
++        return map[gdk];
+     }
+     return 0;
+ }
+@@ -2160,11 +2174,17 @@ static gboolean button_event(GtkWidget *widget, GdkEventButton *button)
+         spice_inputs_channel_button_press(d->inputs,
+                                           button_gdk_to_spice(button->button),
+                                           button_mask_gdk_to_spice(button->state));
++        /* Save the mouse button mask to couple it with Wayland movement */
++        d->mouse_button_mask = button_mask_gdk_to_spice(button->state);
++        d->mouse_button_mask |= button_gdk_to_spice_mask(button->button);
+         break;
+     case GDK_BUTTON_RELEASE:
+         spice_inputs_channel_button_release(d->inputs,
+                                             button_gdk_to_spice(button->button),
+                                             button_mask_gdk_to_spice(button->state));
++        /* Save the mouse button mask to couple it with Wayland movement */
++        d->mouse_button_mask = button_mask_gdk_to_spice(button->state);
++        d->mouse_button_mask ^= button_gdk_to_spice_mask(button->button);
+         break;
+     default:
+         break;
+-- 
+2.26.2
+

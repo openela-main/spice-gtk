@@ -1,0 +1,47 @@
+From 1562755fd60ae79d595dd8be0d1ddf5b784729c2 Mon Sep 17 00:00:00 2001
+From: Gilmar Santos Jr <jgasjr@gmail.com>
+Date: Wed, 6 May 2020 12:58:51 -0300
+Subject: [PATCH 4/9] spice-channel:  Read all available data from SASL buffer
+
+When SASL is in use, its buffer may contain remaining data from previously
+received messages. The spice_channel_iterate_read should use it, even if c->in
+socket is not readable.
+
+Fixes: https://gitlab.freedesktop.org/spice/spice-gtk/-/issues/126
+
+Acked-by: Frediano Ziglio <fziglio@redhat.com>
+(cherry picked from commit 80e9c852a406d93cad3fc7b845fe181d75356f11)
+---
+ src/spice-channel.c | 13 ++++++-------
+ 1 file changed, 6 insertions(+), 7 deletions(-)
+
+diff --git a/src/spice-channel.c b/src/spice-channel.c
+index 315e287..5824fdd 100644
+--- a/src/spice-channel.c
++++ b/src/spice-channel.c
+@@ -2345,16 +2345,15 @@ static void spice_channel_iterate_read(SpiceChannel *channel)
+     /* treat all incoming data (block on message completion) */
+     while (!c->has_error &&
+            c->state != SPICE_CHANNEL_STATE_MIGRATING &&
+-           g_pollable_input_stream_is_readable(G_POLLABLE_INPUT_STREAM(c->in))
+-    ) { do
+-            spice_channel_recv_msg(channel,
+-                                   (handler_msg_in)SPICE_CHANNEL_GET_CLASS(channel)->handle_msg, NULL);
++           (g_pollable_input_stream_is_readable(G_POLLABLE_INPUT_STREAM(c->in))
+ #ifdef HAVE_SASL
+             /* flush the sasl buffer too */
+-        while (c->sasl_decoded != NULL);
+-#else
+-        while (FALSE);
++           || c->sasl_decoded != NULL
+ #endif
++           )
++    ) {
++        spice_channel_recv_msg(channel,
++                               (handler_msg_in)SPICE_CHANNEL_GET_CLASS(channel)->handle_msg, NULL);
+     }
+ 
+ }
+-- 
+2.26.2
+

@@ -1,0 +1,33 @@
+From 20eebc549da508c82e139120b577b047c76964c3 Mon Sep 17 00:00:00 2001
+From: Uri Lublin <uril@redhat.com>
+Date: Wed, 11 Nov 2020 14:12:19 +0200
+Subject: [PATCH 17/22] empty_cd_clicked_cb: g_free basename
+
+Fix the following static analyzer warning:
+  src/usb-device-widget.c:224: leaked_storage: Failing to save or free
+  storage allocated by "g_path_get_basename(filename)" leaks it.
+
+Signed-off-by: Uri Lublin <uril@redhat.com>
+---
+ src/usb-device-widget.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
+
+diff --git a/src/usb-device-widget.c b/src/usb-device-widget.c
+index 257e9e1..0ff4e52 100644
+--- a/src/usb-device-widget.c
++++ b/src/usb-device-widget.c
+@@ -220,8 +220,10 @@ empty_cd_clicked_cb(GtkToggleButton *toggle, gpointer user_data)
+ 
+         rc = spice_usb_device_manager_create_shared_cd_device(priv->manager, filename, &err);
+         if (!rc && err != NULL) {
++            const gchar *basename = g_path_get_basename(filename);
+             gchar *err_msg = g_strdup_printf(_("shared CD %s, %s"),
+-                                             g_path_get_basename(filename), err->message);
++                                             basename, err->message);
++            g_free((gpointer)basename);
+ 
+             SPICE_DEBUG("Failed to create %s", err_msg);
+             spice_usb_device_widget_add_err_msg(self, err_msg);
+-- 
+2.28.0
+

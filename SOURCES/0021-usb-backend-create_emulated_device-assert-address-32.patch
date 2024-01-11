@@ -1,0 +1,33 @@
+From 35f6926328cd415f6ba24efe49c3f990e44a8948 Mon Sep 17 00:00:00 2001
+From: Uri Lublin <uril@redhat.com>
+Date: Sun, 22 Nov 2020 16:21:00 +0200
+Subject: [PATCH 21/22] usb-backend: create_emulated_device: assert address <
+ 32
+
+This may fix the following static analyzer issue:
+  src/usb-backend.c:1507: large_shift: In expression "1 << address", left
+  shifting by more than 31 bits has undefined behavior.
+  The shift amount, "address", is 32.
+
+Signed-off-by: Uri Lublin <uril@redhat.com>
+---
+ src/usb-backend.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/src/usb-backend.c b/src/usb-backend.c
+index 857488e..c76d576 100644
+--- a/src/usb-backend.c
++++ b/src/usb-backend.c
+@@ -1482,6 +1482,9 @@ spice_usb_backend_create_emulated_device(SpiceUsbBackend *be,
+         }
+     }
+ 
++    // for static analyzers: it is already checked above
++    g_assert(address < 32);
++
+     dev = g_new0(SpiceUsbDevice, 1);
+     dev->device_info.bus = BUS_NUMBER_FOR_EMULATED_USB;
+     dev->device_info.address = address;
+-- 
+2.28.0
+

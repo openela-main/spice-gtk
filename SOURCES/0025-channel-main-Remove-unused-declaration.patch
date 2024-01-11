@@ -1,0 +1,42 @@
+From 41c8a60e5e9451080863d2f87bb0f5007a71cc34 Mon Sep 17 00:00:00 2001
+From: Frediano Ziglio <freddy77@gmail.com>
+Date: Tue, 4 Aug 2020 15:50:03 +0100
+Subject: [PATCH] channel-main: Remove unused declaration
+
+OldRedMigrationBegin is not used. Last usage removed in
+
+  commit f944ad6935f12efe47f78cbde1c5e6db31442597
+
+    More cleanup for old protocol support
+
+    Support for protocol version 1 was dropped in commit f77a1d50.
+
+Signed-off-by: Frediano Ziglio <freddy77@gmail.com>
+---
+ src/channel-main.c | 10 ----------
+ 1 file changed, 10 deletions(-)
+
+diff --git a/src/channel-main.c b/src/channel-main.c
+index e944771..3dd94a2 100644
+--- a/src/channel-main.c
++++ b/src/channel-main.c
+@@ -2326,16 +2326,6 @@ static gboolean main_migrate_handshake_done(gpointer data)
+     return FALSE;
+ }
+ 
+-#ifdef __GNUC__
+-typedef struct __attribute__ ((__packed__)) OldRedMigrationBegin {
+-#else
+-typedef struct __declspec(align(1)) OldRedMigrationBegin {
+-#endif
+-    uint16_t port;
+-    uint16_t sport;
+-    char host[0];
+-} OldRedMigrationBegin;
+-
+ /* main context */
+ static gboolean migrate_connect(gpointer data)
+ {
+-- 
+2.28.0
+
